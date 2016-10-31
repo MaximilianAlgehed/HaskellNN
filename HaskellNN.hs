@@ -1,4 +1,9 @@
 import Data.List
+import Test.QuickCheck
+
+{- TODO:
+ - * Implement softmax
+ -}
 
 -- Some types
 type Delta = Double
@@ -38,6 +43,13 @@ sigmoid par = Neuron {parameters = par,
                       neuron = \par x -> 1 / (1 + exp(negate (activation par x))),
                       derivative = \x -> (exp (negate x)) / (1 + exp (negate x))^2
                      }
+
+relu :: Parameters
+     -> Neuron
+relu par = Neuron {parameters = par,
+                   neuron = \par x -> max 0 (activation par x),
+                   derivative = \x -> if x > 0 then 1 else 0
+                  }
 
 layer :: Layer
       -> [Double]
@@ -97,5 +109,10 @@ train :: Alpha
 train a = foldl (backprop a)
 
 -- Create a network of all 1s
-fromConf :: [(Int, Parameters -> Neuron)] -> Network
-fromConf xs = [replicate o (f (replicate i 1, 1)) | ((i, _), (o, f)) <- zip xs (tail xs)] 
+fromConf :: [(Int, Parameters -> Neuron)] -> Gen Network
+fromConf xs = sequence [sequence $
+                        replicate o $ do
+                                        b <- fmap (/100) arbitrary
+                                        is <- sequence $ replicate i $ fmap (/100) arbitrary
+                                        return $ f (is, b)
+                        | ((i, _), (o, f)) <- zip xs (tail xs)] 
